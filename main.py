@@ -20,10 +20,10 @@ def get_gamepad():
 
 def main():
     (gp_vid, gp_pid) = get_gamepad()
-    print(f"Found gamepad with vid:pid {gp_vid}:{gp_pid}")
-
     if gp_vid is None:
         return
+
+    print(f"Found gamepad with vid:pid {gp_vid}:{gp_pid}")
 
     gamepad = hid.device()
     gamepad.open(0x046d, 0xc216)
