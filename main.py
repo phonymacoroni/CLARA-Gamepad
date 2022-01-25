@@ -1,29 +1,37 @@
 import hid
 import serial
-from enum import Enum
+import time
+
+# SEMI-OPTIONAL CONSTANTS
+TIME_DELAY = 0.15
+DESIRED_GAMEPAD = 'Logitech Dual Action'
+DESIRED_BAUD = 9600
+DESIRED_VID = 0x046d
+DESIRED_PID = 0xc216
+HARDSET_PICO = '/dev/tty.usbserial-020ABD5F'
 
 
 def construct_button_bits(gpst):
     """
     Constructs the button bits from the gamepad state
     :param gpst: Gamepad State
-    :return butt_st: 8 Bits Representing the Button State
+    :return butt_st: 10 Bits Representing the Button State
     """
     # Blank Butt
     butt_st = 0b00000000
 
     # Regular Buttons
     if gpst[4] & 0b100000:
-        print("A")
+        if __debug__: print("A")
         butt_st |= 0b00000001
     if gpst[4] & 0b1000000:
-        print("B")
+        if __debug__: print("B")
         butt_st |= 0b00000010
     if gpst[4] & 0b10000:
-        print("X")
+        if __debug__: print("X")
         butt_st |= 0b00000100
     if gpst[4] & 0b10000000:
-        print("Y")
+        if __debug__: print("Y")
         butt_st |= 0b00001000
 
     # D Pad Devils
@@ -35,33 +43,41 @@ def construct_button_bits(gpst):
     d_devils = int(butt_bits, 2)
     # If else statements for the d_devils cases 0-7
     if d_devils == 0:
-        print("D-Pad Up")
+        if __debug__: print("D-Pad Up")
         butt_st |= 0b00000000
     elif d_devils == 1:
-        print("D-Pad Up Right")
+        if __debug__: print("D-Pad Up Right")
         butt_st |= 0b00010000
     elif d_devils == 2:
-        print("D-Pad Right")
+        if __debug__: print("D-Pad Right")
         butt_st |= 0b00100000
     elif d_devils == 3:
-        print("D-Pad Down Right")
+        if __debug__: print("D-Pad Down Right")
         butt_st |= 0b00110000
     elif d_devils == 4:
-        print("D-Pad Down")
+        if __debug__: print("D-Pad Down")
         butt_st |= 0b01000000
     elif d_devils == 5:
-        print("D-Pad Down Left")
+        if __debug__: print("D-Pad Down Left")
         butt_st |= 0b01010000
     elif d_devils == 6:
-        print("D-Pad Left")
+        if __debug__: print("D-Pad Left")
         butt_st |= 0b01100000
     elif d_devils == 7:
-        print("D-Pad Up Left")
+        if __debug__: print("D-Pad Up Left")
         butt_st |= 0b01110000
 
-    # TODO: Add RB and LB
+    # Rear Buttons
+    butt_st = butt_st << 2
+    if gpst[5] & 0b1:
+        if __debug__: print("LB")
+        butt_st |= 0b0000000001
+    if gpst[5] & 0b10:
+        if __debug__: print("RB")
+        butt_st |= 0b0000000010
 
     return butt_st
+
 
 def construct_sticky(gpst):
     """
@@ -87,7 +103,7 @@ def construct_sticky(gpst):
     stick_st |= gpst[3]
 
     return stick_st
-    
+
 
 def get_gamepad():
     for device in hid.enumerate():
@@ -99,31 +115,40 @@ def get_gamepad():
 
 
 def main():
+    # If you want to hardset the gamepad the following is not really needed
     (gp_vid, gp_pid) = get_gamepad()
     if gp_vid is None:
         return
+    if __debug__: print(f"Found gamepad with vid:pid {gp_vid}:{gp_pid}")
 
-    print(f"Found gamepad with vid:pid {gp_vid}:{gp_pid}")
-
+    # Open the Gamepad
     gamepad = hid.device()
-    gamepad.open(0x046d, 0xc216)
+    gamepad.open(DESIRED_VID, DESIRED_PID)
     gamepad.set_nonblocking(1)
 
-    ser = serial.Serial('/dev/tty.usbserial-020ABD5F', 9600)
+    # Open the Serial Port
+    ser = serial.Serial(HARDSET_PICO, DESIRED_BAUD)
     ser.close()
-    print(ser.name)
-
+    if __debug__: print(f"Found serial at {ser.name}" + f" with baud {ser.baudrate}")
     ser.open()
 
+    print("--- Serial Port Opened, Gamepad Connected, Ready for Action ---")
+
     while True:
+        # Read in the next gamepad report
         gpst = gamepad.read(64)
+
+        # If the report is not empty
         if gpst:
+
+            # Debug Printing of the report in decimal and binary
+            # ---- DEBUG PRINTING HERE ----
             # for val in gpst:
             #     print(format(val, "08b"), ", ", end="")
             #     # print(format(val, "03d"), ", ", end="")
             #     pass
             # print()
-            # Write the 4th element of the gpst to the serial port
+            # ---- END DEBUG PRINTING HERE ----
 
             # Construct Button Bits
             butt_st = construct_button_bits(gpst)
@@ -131,15 +156,24 @@ def main():
             # Construct Sticky
             stick_st = construct_sticky(gpst)
 
+            # Print sizes of the variables
+            # if __debug__: print(f"Button Bits: {butt_st}")
+            # if __debug__: print(f"Sticky Bits: {stick_st}")
+
             # Combined Sticky and Button Bits
-            stick_butt = butt_st << 16 | stick_st
-            stick_butt_bin = bin(stick_butt) # TODO: Chop off first 2, convert to string, send with newline
-            ser.write(stick_butt)
-            ser.write(b'\n') # TODO: Remove
-            print(ser.readline())
-            # print(gpst[4] & 0b00101000)
-            # if gpst[4] & Buttons.A.value:
-            #     print(format(gpst[4], "03d"), "A")
+            stick_butt = format(butt_st, '010b') + format(stick_st, '032b') + '\n'
+
+            # Combine the button and sticky bits printout
+            if __debug__: print(f"Combined: {stick_butt}")
+
+            # Write to Serial
+            byr = ser.write(bytes(stick_butt, 'ascii'))
+            if __debug__: print(f"Bytes Written: {byr}")
+
+            # print(ser.readline())
+
+            # Wait to ensure no tomfoolery
+            time.sleep(TIME_DELAY)
 
 
 if __name__ == '__main__':
