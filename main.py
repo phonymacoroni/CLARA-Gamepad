@@ -9,6 +9,68 @@ class Buttons(Enum):
     Y = 0b10001000
 
 
+def construct_button_bits(gpst):
+    """
+    Constructs the button bits from the gamepad state
+    :param gpst: Gamepad State
+    :return butt_st: 8 Bits Representing the Button State
+    """
+    # Blank Butt
+    butt_st = 0b00000000
+
+    # Regular Buttons
+    if gpst[4] & 0b100000:
+        print("A")
+        butt_st |= 0b00000001
+    if gpst[4] & 0b1000000:
+        print("B")
+        butt_st |= 0b00000010
+    if gpst[4] & 0b10000:
+        print("X")
+        butt_st |= 0b00000100
+    if gpst[4] & 0b10000000:
+        print("Y")
+        butt_st |= 0b00001000
+
+    # D Pad Devils
+    butt_bits = bin(gpst[4])
+    # Cut off the front of the butt
+    butt_bits = butt_bits[2:]
+    # Take only the last 4 bits
+    butt_bits = butt_bits[-4:]
+    d_devils = int(butt_bits, 2)
+    # If else statements for the d_devils cases 0-7
+    if d_devils == 0:
+        print("D-Pad Up")
+        butt_st |= 0b00000000
+    elif d_devils == 1:
+        print("D-Pad Up Right")
+        butt_st |= 0b00010000
+    elif d_devils == 2:
+        print("D-Pad Right")
+        butt_st |= 0b00100000
+    elif d_devils == 3:
+        print("D-Pad Down Right")
+        butt_st |= 0b00110000
+    elif d_devils == 4:
+        print("D-Pad Down")
+        butt_st |= 0b01000000
+    elif d_devils == 5:
+        print("D-Pad Down Left")
+        butt_st |= 0b01010000
+    elif d_devils == 6:
+        print("D-Pad Left")
+        butt_st |= 0b01100000
+    elif d_devils == 7:
+        print("D-Pad Up Left")
+        butt_st |= 0b01110000
+
+    return butt_st
+
+def construct_sticky(gpst):
+    pass
+    
+
 def get_gamepad():
     for device in hid.enumerate():
         # If the device has a product string that is "Logitech Dual Action", return it
@@ -36,22 +98,31 @@ def main():
     ser.open()
 
     while True:
-        report = gamepad.read(64)
-        if report:
-            for val in report:
-                print(format(val, "08b"), ", ", end="")
-                # print(format(val, "03d"), ", ", end="")
-                pass
-            print()
-            # Write the 4th element of the report to the serial port
+        gpst = gamepad.read(64)
+        if gpst:
+            # for val in gpst:
+            #     print(format(val, "08b"), ", ", end="")
+            #     # print(format(val, "03d"), ", ", end="")
+            #     pass
+            # print()
+            # Write the 4th element of the gpst to the serial port
 
-            if report[4] & 0b100000:
-                print("'A' detected, Sending arbitrary number 7 over serial...")
-                ser.write(b'7'+b'\n')
-                print(ser.readline())
-            # print(report[4] & 0b00101000)
-            # if report[4] & Buttons.A.value:
-            #     print(format(report[4], "03d"), "A")
+            # Construct Button Bits
+            butt_st = construct_button_bits(gpst)
+
+            # Construct Sticky
+            # stick_st = construct_sticky(gpst)
+
+            # Combined Sticky and Button Bits
+            # stick_butt = butt_st << 16 | stick_st
+            ser.write(butt_st)
+            ser.write(b'\n')
+            print(ser.readline())
+            # print(gpst[4] & 0b00101000)
+            # if gpst[4] & Buttons.A.value:
+            #     print(format(gpst[4], "03d"), "A")
+
+
 
 
 if __name__ == '__main__':
