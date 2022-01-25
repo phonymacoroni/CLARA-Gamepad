@@ -2,12 +2,6 @@ import hid
 import serial
 from enum import Enum
 
-class Buttons(Enum):
-    A = 0b00101000
-    B = 0b01001000
-    X = 0b00011000
-    Y = 0b10001000
-
 
 def construct_button_bits(gpst):
     """
@@ -65,10 +59,34 @@ def construct_button_bits(gpst):
         print("D-Pad Up Left")
         butt_st |= 0b01110000
 
+    # TODO: Add RB and LB
+
     return butt_st
 
 def construct_sticky(gpst):
-    pass
+    """
+    Constructs the sticky bits from the gamepad state
+    :param gpst: Gamepad state
+    :return stick_st: 4 Bytes Representing the Sticky State
+    """
+    # Blank single byte
+    stick_st = 0b00000000
+    # OR report[0] with the sticky bits
+    stick_st |= gpst[0]
+    # Shift the sticky bits to the left by 8 bits
+    stick_st = stick_st << 8
+    # OR report[1] with the sticky bits
+    stick_st |= gpst[1]
+    # Shift the sticky bits to the left by 8 bits
+    stick_st = stick_st << 8
+    # OR report[2] with the sticky bits
+    stick_st |= gpst[2]
+    # Shift the sticky bits to the left by 8 bits
+    stick_st = stick_st << 8
+    # OR report[3] with the sticky bits
+    stick_st |= gpst[3]
+
+    return stick_st
     
 
 def get_gamepad():
@@ -111,18 +129,17 @@ def main():
             butt_st = construct_button_bits(gpst)
 
             # Construct Sticky
-            # stick_st = construct_sticky(gpst)
+            stick_st = construct_sticky(gpst)
 
             # Combined Sticky and Button Bits
-            # stick_butt = butt_st << 16 | stick_st
-            ser.write(butt_st)
-            ser.write(b'\n')
+            stick_butt = butt_st << 16 | stick_st
+            stick_butt_bin = bin(stick_butt) # TODO: Chop off first 2, convert to string, send with newline
+            ser.write(stick_butt)
+            ser.write(b'\n') # TODO: Remove
             print(ser.readline())
             # print(gpst[4] & 0b00101000)
             # if gpst[4] & Buttons.A.value:
             #     print(format(gpst[4], "03d"), "A")
-
-
 
 
 if __name__ == '__main__':
