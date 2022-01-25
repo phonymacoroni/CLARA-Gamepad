@@ -32,3 +32,6 @@ the value increases. (e.g. Bottom Left is 5, and Right is 2)
 
 Joystick values are represented by 8 bit numbers, 0-255. 
 Investigate Ranges.
+
+
+For Kate and Brian, made with ❤️
