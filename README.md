@@ -20,9 +20,9 @@ The `-O` flag "optimizes" the program, which gets rid of debug print statements.
 
 
 # Proposed Protocol
-| Bits |  0  |  1  |  2  |   3 |     4-7     |  8  |   9 |  10-17 | 18-25 | 26-33  | 34-42 |
-|:-----|:---:|:---:|:---:|----:|:-----------:|:---:|----:|-------:|:-----:|:------:|------:|
-| Ref  |  A  |  B  |  X  |   Y | D-PAD Dir\* | RB  |  LB | LJoy 1 | LJoy2 | RJoy 1 | RJoy2 |
+| Bits |     0-3     |  4  |  5  |   6 |  7  |  8  |   9 |  10-17 | 18-25 | 26-33  | 34-42 |
+|:-----|:-----------:|:---:|:---:|----:|:---:|:---:|----:|-------:|:-----:|:------:|------:|
+| Ref  | D-PAD Dir\* |  Y  |  X  |   B |  A  | RB  |  LB | LJoy 1 | LJoy2 | RJoy 1 | RJoy2 |
 
 ### Notes
 \* D-Pad direction is represented by a 4 bit number, 0-7.
