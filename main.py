@@ -1,14 +1,32 @@
 import hid
 import serial
 import time
+import yaml
 
-# SEMI-OPTIONAL CONSTANTS
-TIME_DELAY = 0.15
-DESIRED_GAMEPAD = 'Logitech Dual Action'
-DESIRED_BAUD = 9600
-DESIRED_VID = 0x046d
-DESIRED_PID = 0xc216
-HARDSET_PICO = '/dev/tty.usbserial-020ABD5F'
+# LOAD SEMI-OPTIONAL CONSTANTS
+# load constants from config.yaml file
+try:
+    with open('config.yaml', 'r') as ymlfile:
+        cfg = yaml.load(ymlfile, Loader=yaml.Loader)
+except FileNotFoundError:
+    print('config.yaml file not found, fix that please')
+    cfg = {}
+    quit()
+
+
+DESIRED_GAMEPAD = cfg.get('desired_gamepad')
+DESIRED_BAUD = cfg.get('desired_baud')
+DESIRED_VID = cfg.get('desired_vid')
+DESIRED_PID = cfg.get('desired_pid')
+HARDSET_PICO = cfg.get('hardset_pico')
+DEADZONE = cfg.get('deadzone')
+
+# Setup Deadzones
+dz_2 = (128 - DEADZONE) / 2
+dz_c1 = 128 - DEADZONE
+dz_c2 = 128 + DEADZONE
+dz_3 = (128 + DEADZONE) + dz_2
+dz_4 = 255
 
 
 def construct_button_bits(gpst):
@@ -79,6 +97,27 @@ def construct_button_bits(gpst):
     return butt_st
 
 
+def chop_stick(stick_st):
+    """
+    Chops the sticky bit into ranges and returns the binned value
+    :param stick_st: 8 bit stick value
+    :return: Chopped Stick Value
+    """
+
+    if stick_st < dz_2:
+        return int(0)
+    elif stick_st < dz_c1:
+        return int(dz_2)
+    elif dz_c2 > stick_st > dz_c1:
+        return int(128)
+    elif stick_st < dz_3:
+        return int(dz_3)
+    elif stick_st <= dz_4:
+        return int(255)
+    else:
+        return int(128)
+
+
 def construct_sticky(gpst):
     """
     Constructs the sticky bits from the gamepad state
@@ -88,19 +127,19 @@ def construct_sticky(gpst):
     # Blank single byte
     stick_st = 0b00000000
     # OR report[0] with the sticky bits
-    stick_st |= gpst[0]
+    stick_st |= chop_stick(gpst[0])
     # Shift the sticky bits to the left by 8 bits
     stick_st = stick_st << 8
     # OR report[1] with the sticky bits
-    stick_st |= gpst[1]
+    stick_st |= chop_stick(gpst[1])
     # Shift the sticky bits to the left by 8 bits
     stick_st = stick_st << 8
     # OR report[2] with the sticky bits
-    stick_st |= gpst[2]
+    stick_st |= chop_stick(gpst[2])
     # Shift the sticky bits to the left by 8 bits
     stick_st = stick_st << 8
     # OR report[3] with the sticky bits
-    stick_st |= gpst[3]
+    stick_st |= chop_stick(gpst[3])
 
     return stick_st
 
@@ -134,6 +173,10 @@ def main():
 
     print("--- Serial Port Opened, Gamepad Connected, Ready for Action ---")
 
+    # Save Previous State
+    prev_butt = None
+
+    # Main Loop
     while True:
         # Read in the next gamepad report
         gpst = gamepad.read(64)
@@ -167,13 +210,19 @@ def main():
             if __debug__: print(f"Combined: {stick_butt}")
 
             # Write to Serial
-            byr = ser.write(bytes(stick_butt, 'ascii'))
+            if stick_butt is not prev_butt:
+                # Stick in butt
+                byr = ser.write(bytes(stick_butt, 'ascii'))
+
+            # Assign the butt
+            prev_butt = stick_butt
+
             if __debug__: print(f"Bytes Written: {byr}")
 
             # print(ser.readline())
 
             # Wait to ensure no tomfoolery
-            time.sleep(TIME_DELAY)
+            # time.sleep(TIME_DELAY)
 
 
 if __name__ == '__main__':

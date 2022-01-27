@@ -10,6 +10,19 @@ send them over serial to a TinyPico board.
 2. Install the requirements using `pip install -r requirements.txt` in the root of the directory
 
 ## Running
+Ensure a `config.yaml` file exists in the root of the directory.
+A sample `config.yaml` file is provided below, please ensure your config files contains all of these keys.
+```yaml
+---
+  time_delay: 0.15
+  desired_gamepad: 'Logitech Dual Action'
+  desired_baud: 9600
+  desired_vid: 0x046d
+  desired_pid: 0xc216
+  hardset_pico: '/dev/tty.usbserial-020ABD5F'
+  deadzone: 20
+```
+
 Ensure that the serial port is not already open.
 
 Run the program with the following command:
