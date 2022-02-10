@@ -13,7 +13,6 @@ except FileNotFoundError:
     cfg = {}
     quit()
 
-
 DESIRED_GAMEPAD = cfg.get('desired_gamepad')
 DESIRED_BAUD = cfg.get('desired_baud')
 DESIRED_VID = cfg.get('desired_vid')
@@ -219,7 +218,8 @@ def main():
 
             if __debug__: print(f"Bytes Written: {byr}")
 
-            # print(ser.readline())
+            while ser.in_waiting:
+                print(ser.readline())
 
             # Wait to ensure no tomfoolery
             # time.sleep(TIME_DELAY)
