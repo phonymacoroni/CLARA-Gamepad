@@ -218,6 +218,7 @@ def main():
 
             if __debug__: print(f"Bytes Written: {byr}")
 
+            # Print from the serial port buffer, allowing for multiple lines of debug
             while ser.in_waiting:
                 print(ser.readline())
 
